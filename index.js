@@ -22,12 +22,15 @@ const printErrors = require('./src/output').printErrors;
 const removeStyle = require('./src/removeStyle');
 const replaceAllStrings = require('./src/replaceAllStrings');
 const replaceFill = require('./src/replaceFill');
+const replaceStroke = require('./src/replaceStroke');
 
 // Argument setup
 const args = yargs
   .option('dir', { alias: 'd', default: false })
   .option('format', { default: true })
   .option('output', { alias: 'o' })
+  .option('fillProp', { default: true })
+  .option('strokeProp', { default: true })
   .option('rm-style', { default: false })
   .option('force', { alias: 'f', default: false }).argv;
 
@@ -36,6 +39,8 @@ const firstArg = args._[0];
 const newFileName = args._[1] || 'MyComponent';
 const outputPath = args.output;
 const directoryPath = args.dir;
+const fillProp = args.fillProp;
+const strokeProp = args.strokeProp;
 const rmStyle = args.rmStyle;
 const format = args.format;
 
@@ -135,7 +140,14 @@ const runUtil = (fileToRead, fileToWrite) => {
         jsx = replaceAllStrings(jsx);
         
         // replace Fill
-        jsx = replaceFill(jsx);
+        if (fillProp) {
+          jsx = replaceFill(jsx);
+        }
+        
+        // replace Stroke
+        if (strokeProp) {
+          jsx = replaceStroke(jsx);
+        }
 
         // Wrap it up in a React component
         jsx = generateComponent(jsx, fileToWrite);
