@@ -23,6 +23,7 @@ const removeStyle = require('./src/removeStyle');
 const replaceAllStrings = require('./src/replaceAllStrings');
 const replaceFill = require('./src/replaceFill');
 const replaceStroke = require('./src/replaceStroke');
+const replaceWidthHeight = require('./src/replaceWidthHeight');
 
 // Argument setup
 const args = yargs
@@ -31,6 +32,7 @@ const args = yargs
   .option('output', { alias: 'o' })
   .option('fillProp', { type: 'boolean', default: true })
   .option('strokeProp', { type: 'boolean', default: true })
+  .option('widthHeightProp', { type: 'boolean', default: true })
   .option('rm-style', { default: false })
   .option('force', { alias: 'f', default: false }).argv;
 
@@ -41,6 +43,7 @@ const outputPath = args.output;
 const directoryPath = args.dir;
 const fillProp = args.fillProp;
 const strokeProp = args.strokeProp;
+const widthHeightProp = args.widthHeightProp;
 const rmStyle = args.rmStyle;
 const format = args.format;
 
@@ -147,6 +150,11 @@ const runUtil = (fileToRead, fileToWrite) => {
         // replace Stroke
         if (strokeProp) {
           jsx = replaceStroke(jsx);
+        }
+        
+        // replace widthHeightProp
+        if (widthHeightProp) {
+          jsx = replaceWidthHeight(jsx);
         }
 
         // Wrap it up in a React component
