@@ -43,6 +43,7 @@ module.exports = function replaceAll(str) {
     'radialGradient>': 'RadialGradient>',
     'stop>': 'Stop>',
     'clipPath>': 'ClipPath>',
+    'fill=".*?"': 'fill={props.fill}'
     cy: 'y',
     cx: 'x'
   };
