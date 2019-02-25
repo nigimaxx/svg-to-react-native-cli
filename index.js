@@ -21,6 +21,7 @@ const generateComponent = require('./src/generateComponent');
 const printErrors = require('./src/output').printErrors;
 const removeStyle = require('./src/removeStyle');
 const replaceAllStrings = require('./src/replaceAllStrings');
+const replaceFill = require('./src/replaceFill');
 
 // Argument setup
 const args = yargs
@@ -132,6 +133,9 @@ const runUtil = (fileToRead, fileToWrite) => {
       SVGtoJSX(output).then(jsx => {
         // Convert any html tags to react-native-svg tags
         jsx = replaceAllStrings(jsx);
+        
+        // replace Fill
+        jsx = replaceFill(jsx);
 
         // Wrap it up in a React component
         jsx = generateComponent(jsx, fileToWrite);
