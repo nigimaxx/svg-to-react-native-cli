@@ -29,8 +29,8 @@ const args = yargs
   .option('dir', { alias: 'd', default: false })
   .option('format', { default: true })
   .option('output', { alias: 'o' })
-  .option('fillProp', { default: true })
-  .option('strokeProp', { default: true })
+  .option('fillProp', { type: 'boolean', default: true })
+  .option('strokeProp', { type: 'boolean', default: true })
   .option('rm-style', { default: false })
   .option('force', { alias: 'f', default: false }).argv;
 
