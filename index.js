@@ -57,9 +57,9 @@ const writeFile = (processedSVG, fileName) => {
   let filesWritten = 0;
 
   if (outputPath) {
-    file = path.resolve(process.cwd(), outputPath, `${fileName}.js`);
+    file = path.resolve(process.cwd(), outputPath, `${fileName}.tsx`);
   } else {
-    file = path.resolve(process.cwd(), `${fileName}.js`);
+    file = path.resolve(process.cwd(), `${fileName}.tsx`);
   }
 
   fs.writeFile(file, processedSVG, { flag: args.force ? 'w' : 'wx' }, function(
@@ -141,17 +141,17 @@ const runUtil = (fileToRead, fileToWrite) => {
       SVGtoJSX(output).then(jsx => {
         // Convert any html tags to react-native-svg tags
         jsx = replaceAllStrings(jsx);
-        
+
         // replace Fill
         if (fillProp) {
           jsx = replaceFill(jsx);
         }
-        
+
         // replace Stroke
         if (strokeProp) {
           jsx = replaceStroke(jsx);
         }
-        
+
         // replace widthHeightProp
         if (widthHeightProp) {
           jsx = replaceWidthHeight(jsx);

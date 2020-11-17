@@ -27,7 +27,9 @@ import {
   Stop
 } from 'react-native-svg';
 
-export default function ${componentName}(props) {
+type Props = { fill?: string; stroke?: string; height?: number; width?: number };
+
+export default function ${componentName}(props: Props) {
   return (
 ${svgOutput
   .split('\n')
