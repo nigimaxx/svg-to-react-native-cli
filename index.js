@@ -3,8 +3,7 @@
 'use strict';
 
 // Vendor includes
-const chalk = require('chalk');
-const fs = require('fs');
+const fs = require('fs').promises;
 const yargs = require('yargs');
 const path = require('path');
 const HTMLtoJSX = require('htmltojsx');
@@ -16,7 +15,6 @@ const content = require('./lang/en');
 
 // Local includes
 const createComponentName = require('./src/createComponentName');
-const formatSVG = require('./src/formatSVG');
 const generateComponent = require('./src/generateComponent');
 const printErrors = require('./src/output').printErrors;
 const removeStyle = require('./src/removeStyle');
@@ -27,7 +25,7 @@ const replaceWidthHeight = require('./src/replaceWidthHeight');
 
 // Argument setup
 const args = yargs
-  .option('dir', { alias: 'd', default: false })
+  .option('dir', { alias: 'd', default: '.' })
   .option('format', { default: true })
   .option('output', { alias: 'o' })
   .option('fillProp', { type: 'boolean', default: true })
@@ -45,61 +43,44 @@ const fillProp = args.fillProp;
 const strokeProp = args.strokeProp;
 const widthHeightProp = args.widthHeightProp;
 const rmStyle = args.rmStyle;
-const format = args.format;
 
-// Bootstrap base variables
-const converter = new HTMLtoJSX({ createClass: false });
+// Bootstrap base variables´
 const svg = `./${firstArg}.svg`;
-let fileCount = 0;
 
-const writeFile = (processedSVG, fileName) => {
-  let file;
-  let filesWritten = 0;
+process.on('unhandledRejection', (up) => {
+  throw up;
+});
 
-  if (outputPath) {
-    file = path.resolve(process.cwd(), outputPath, `${fileName}.tsx`);
-  } else {
-    file = path.resolve(process.cwd(), `${fileName}.tsx`);
+const initialBasePath = path.resolve(process.cwd(), directoryPath);
+const fullOutputPath = outputPath ? path.resolve(process.cwd(), outputPath) : process.cwd();
+
+const writeFile = async (processedSVG, originalFilepath, filename) => {
+  const originalFilename = path.basename(originalFilepath);
+  const relativeFilepath = path
+    .relative(initialBasePath, originalFilepath)
+    .replace(originalFilename, `${filename}.tsx`);
+
+  const file = path.resolve(fullOutputPath, relativeFilepath);
+
+  try {
+    await fs.writeFile(file, processedSVG, { flag: args.force ? 'w' : 'wx' });
+  } catch (error) {
+    if (error.code === 'EEXIST') {
+      printErrors(`Output file ${file} already exists. Use the force (--force) flag to overwrite the existing files`);
+    } else {
+      printErrors(`Output file ${file} not writable`);
+    }
+    throw error;
   }
 
-  fs.writeFile(file, processedSVG, { flag: args.force ? 'w' : 'wx' }, function(
-    err
-  ) {
-    if (err) {
-      if (err.code === 'EEXIST') {
-        printErrors(
-          `Output file ${file} already exists. Use the force (--force) flag to overwrite the existing files`
-        );
-      } else {
-        printErrors(`Output file ${file} not writable`);
-      }
-      return;
-    }
-    filesWritten++;
-
-    console.log('File written to -> ' + file);
-
-    if (filesWritten === fileCount) {
-      console.log(
-        `${filesWritten} components created. That must be some kind of record`
-      );
-      console.log();
-      console.log(content.processCompleteText);
-      console.log();
-    }
-  });
+  console.log('File written to -> ' + file);
 };
 
-const runUtil = (fileToRead, fileToWrite) => {
-  fs.readFile(fileToRead, 'utf8', function(err, file) {
-    if (err) {
-      printErrors(err);
-      return;
-    }
+const runUtil = async (fileToRead, fileToWrite) => {
+  const file = await fs.readFile(fileToRead, 'utf8');
 
-    let output = file;
-
-    jsdom.env(output, (err, window) => {
+  const output = await new Promise((resolve, reject) => {
+    jsdom.env(file, (err, window) => {
       const body = window.document.getElementsByTagName('body')[0];
 
       if (rmStyle) {
@@ -115,9 +96,7 @@ const runUtil = (fileToRead, fileToWrite) => {
       let defaultWidth = '50px';
       let defaultheight = '50px';
       if (body.firstChild.hasAttribute('viewBox')) {
-        const [minX, minY, width, height] = body.firstChild
-          .getAttribute('viewBox')
-          .split(/[,\s]+/);
+        const [minX, minY, width, height] = body.firstChild.getAttribute('viewBox').split(/[,\s]+/);
         defaultWidth = width;
         defaultheight = height;
       }
@@ -134,57 +113,58 @@ const runUtil = (fileToRead, fileToWrite) => {
       body.firstChild.setAttribute(':props:', '');
 
       // Now that we are done with manipulating the node/s we can return it back as a string
-      output = body.innerHTML;
-
-      // Convert from HTML to JSX
-      // output = converter.convert(output);
-      SVGtoJSX(output).then(jsx => {
-        // Convert any html tags to react-native-svg tags
-        jsx = replaceAllStrings(jsx);
-
-        // replace Fill
-        if (fillProp) {
-          jsx = replaceFill(jsx);
-        }
-
-        // replace Stroke
-        if (strokeProp) {
-          jsx = replaceStroke(jsx);
-        }
-
-        // replace widthHeightProp
-        if (widthHeightProp) {
-          jsx = replaceWidthHeight(jsx);
-        }
-
-        // Wrap it up in a React component
-        jsx = generateComponent(jsx, fileToWrite);
-
-        writeFile(jsx, fileToWrite);
-      });
+      resolve(body.innerHTML);
     });
   });
+
+  // Convert from HTML to JSX
+  // output = converter.convert(output);
+  let jsx = await SVGtoJSX(output);
+
+  // Convert any html tags to react-native-svg tags
+  jsx = replaceAllStrings(jsx);
+
+  // replace Fill
+  if (fillProp) {
+    jsx = replaceFill(jsx);
+  }
+
+  // replace Stroke
+  if (strokeProp) {
+    jsx = replaceStroke(jsx);
+  }
+
+  // replace widthHeightProp
+  if (widthHeightProp) {
+    jsx = replaceWidthHeight(jsx);
+  }
+
+  // Wrap it up in a React component
+  jsx = generateComponent(jsx, fileToWrite);
+
+  writeFile(jsx, fileToRead, fileToWrite);
 };
 
-const runUtilForAllInDir = () => {
-  fs.readdir(path.resolve(process.cwd(), directoryPath), (err, files) => {
-    if (err) {
-      return console.log(err);
-    }
+const runUtilForAllInDir = async (basePath = initialBasePath) => {
+  const files = await fs.readdir(basePath);
 
-    files.forEach((file, i) => {
-      const resolvedFile = path.resolve(process.cwd(), directoryPath, file);
-      const extension = path.extname(resolvedFile);
-      const fileName = path.basename(resolvedFile);
+  await Promise.all(
+    files.map(async (f) => {
+      const filepath = path.resolve(basePath, f);
+      const stat = await fs.stat(filepath);
+
+      if (stat.isDirectory()) return await runUtilForAllInDir(filepath);
+
+      const extension = path.extname(filepath);
+      const filename = path.basename(filepath);
 
       if (extension === '.svg') {
         // variable instantiated up top
-        const componentName = createComponentName(file, fileName);
-        runUtil(resolvedFile, componentName);
-        fileCount++;
+        const componentName = createComponentName(f, filename);
+        await runUtil(filepath, componentName);
       }
-    });
-  });
+    }),
+  );
 };
 
 // Exit out early arguments
@@ -202,6 +182,5 @@ if (args.example) {
 if (directoryPath) {
   runUtilForAllInDir();
 } else {
-  fileCount++;
   runUtil(svg, newFileName);
 }
