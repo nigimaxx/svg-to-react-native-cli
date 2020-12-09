@@ -6,7 +6,6 @@
 const fs = require('fs').promises;
 const yargs = require('yargs');
 const path = require('path');
-const HTMLtoJSX = require('htmltojsx');
 const jsdom = require('jsdom-no-contextify');
 const SVGtoJSX = require('svg-to-jsx');
 
